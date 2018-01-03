@@ -12,6 +12,24 @@ import io.agora.rtc.mediaio.MediaIO;
  */
 
 public class AgoraVideoRender implements IVideoRenderer {
+    private int mUid;
+
+    public AgoraVideoRender() {
+        mUid = 0;
+    }
+
+    public AgoraVideoRender(int uid) {
+        mUid = uid;
+    }
+
+    public int getUid() {
+        return mUid;
+    }
+
+    public void setUid(int uid) {
+        this.mUid = uid;
+    }
+
     @Override
     public boolean onInitialize() {
         return true;

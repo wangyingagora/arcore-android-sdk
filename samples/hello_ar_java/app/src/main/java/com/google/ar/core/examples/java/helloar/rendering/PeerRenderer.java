@@ -30,6 +30,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
+import java.util.concurrent.ConcurrentHashMap;
 
 import de.javagl.obj.Obj;
 import de.javagl.obj.ObjData;
@@ -59,6 +60,8 @@ public class PeerRenderer {
     private float[] mModelMatrix = new float[16];
     private float[] mModelViewMatrix = new float[16];
     private float[] mModelViewProjectionMatrix = new float[16];
+
+    private ConcurrentHashMap<Integer, byte[]> mData = new ConcurrentHashMap<>();
 
     // Vertex coordinates in Normalized Device Coordinates, i.e. (-1, -1) is bottom-left and (1, 1) is
     // top-right.
@@ -169,6 +172,9 @@ public class PeerRenderer {
         // Attach the object texture.
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextures[0]);
+
+        /*GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width,
+                height, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mData);*/
 
         GLES20.glVertexAttribPointer(
             mPositionAttribute, 2, GLES20.GL_FLOAT, false, 0, FULL_RECTANGLE_BUF);
