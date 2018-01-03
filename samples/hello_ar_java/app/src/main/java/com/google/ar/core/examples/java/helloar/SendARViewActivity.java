@@ -25,6 +25,7 @@ import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BaseTransientBottomBar;
@@ -52,6 +53,7 @@ import com.google.ar.core.Trackable.TrackingState;
 import com.google.ar.core.examples.java.helloar.rendering.BackgroundRenderer;
 import com.google.ar.core.examples.java.helloar.rendering.ObjectRenderer;
 import com.google.ar.core.examples.java.helloar.rendering.ObjectRenderer.BlendMode;
+import com.google.ar.core.examples.java.helloar.rendering.PeerRenderer;
 import com.google.ar.core.examples.java.helloar.rendering.PlaneRenderer;
 import com.google.ar.core.examples.java.helloar.rendering.PointCloudRenderer;
 import com.google.ar.core.exceptions.UnavailableApkTooOldException;
@@ -109,6 +111,9 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
     private final static int SEND_AR_VIEW = 1;
     private AgoraVideoSource mSource;
     private AgoraVideoRender mRender;
+
+    private Handler mGLHandler;
+    private PeerRenderer mPeerObject = new PeerRenderer();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -342,6 +347,16 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
             Log.e(TAG, "Failed to read plane texture");
         }
         mPointCloud.createOnGlThread(/*context=*/this);
+
+        try {
+            mPeerObject.createOnGlThread(this);
+        } catch (IOException ex) {
+            printLog(ex.toString());
+        }
+
+        //Looper.prepare();
+        //mGLHandler = new Handler(Looper.myLooper());
+        //Looper.loop();
     }
 
     @Override
@@ -453,6 +468,9 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
                 mVirtualObjectShadow.updateModelMatrix(mAnchorMatrix, scaleFactor);
                 mVirtualObject.draw(viewmtx, projmtx, lightIntensity);
                 mVirtualObjectShadow.draw(viewmtx, projmtx, lightIntensity);
+
+                //mPeerObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
+                //mPeerObject.draw(viewmtx, projmtx);
             }
 
             sendARViewMessage(gl);
