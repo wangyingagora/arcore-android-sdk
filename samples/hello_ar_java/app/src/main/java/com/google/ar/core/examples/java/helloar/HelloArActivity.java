@@ -52,6 +52,10 @@ import java.util.concurrent.ArrayBlockingQueue;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import io.agora.rtc.Constants;
+import io.agora.rtc.IRtcEngineEventHandler;
+import io.agora.rtc.RtcEngine;
+
 /**
  * This is a simple example that shows how to create an augmented reality (AR) application using the
  * ARCore API. The application will display any detected planes and will allow the user to tap on a
@@ -80,6 +84,8 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
     // Tap handling and UI.
     private final ArrayBlockingQueue<MotionEvent> mQueuedSingleTaps = new ArrayBlockingQueue<>(16);
     private final ArrayList<Anchor> mAnchors = new ArrayList<>();
+
+    private RtcEngine mRtcEngine;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -146,6 +152,27 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
             showSnackbarMessage("This device does not support AR", true);
         }
         mSession.configure(config);
+
+        try {
+            mRtcEngine = RtcEngine.create(this, getString(R.string.private_broadcasting_app_id), new IRtcEngineEventHandler() {
+                @Override
+                public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
+                    printLog(channel);
+                }
+            });
+            mRtcEngine.setChannelProfile(Constants.CHANNEL_PROFILE_LIVE_BROADCASTING);
+            mRtcEngine.enableVideo();
+            mRtcEngine.enableDualStreamMode(true);
+
+            mRtcEngine.setVideoProfile(Constants.VIDEO_PROFILE_480P, false);
+            mRtcEngine.setClientRole(Constants.CLIENT_ROLE_BROADCASTER);
+
+            mRtcEngine.startPreview();
+
+            mRtcEngine.joinChannel(null, "1234", "OpenLive", 0);
+        } catch (Exception ex) {
+            printLog(ex.toString());
+        }
     }
 
     @Override
@@ -406,5 +433,9 @@ public class HelloArActivity extends AppCompatActivity implements GLSurfaceView.
                 mMessageSnackbar = null;
             }
         });
+    }
+
+    private void printLog(String message) {
+        Log.e("ARCore", message);
     }
 }

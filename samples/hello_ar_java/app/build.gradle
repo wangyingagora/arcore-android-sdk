@@ -21,6 +21,8 @@ android {
 }
 
 dependencies {
+    api fileTree(include: '*.jar', dir: 'libs')
+
     // ARCore library
     implementation 'com.google.ar:core:0.91.0'
 
