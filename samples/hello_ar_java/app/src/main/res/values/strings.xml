@@ -16,5 +16,5 @@
 -->
 <resources>
     <string name="app_name">HelloAR Java</string>
-    <string name="private_broadcasting_app_id">aab8b*****7063</string>
+    <!--<string name="private_broadcasting_app_id"></string> -->
 </resources>
