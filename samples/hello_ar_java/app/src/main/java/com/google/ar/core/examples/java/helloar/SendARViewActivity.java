@@ -469,8 +469,8 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
                 mVirtualObject.draw(viewmtx, projmtx, lightIntensity);
                 mVirtualObjectShadow.draw(viewmtx, projmtx, lightIntensity);
 
-                //mPeerObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
-                //mPeerObject.draw(viewmtx, projmtx);
+                mPeerObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
+                mPeerObject.draw(viewmtx, projmtx);
             }
 
             sendARViewMessage(gl);

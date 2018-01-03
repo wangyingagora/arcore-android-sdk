@@ -63,10 +63,10 @@ public class PeerRenderer {
     // Vertex coordinates in Normalized Device Coordinates, i.e. (-1, -1) is bottom-left and (1, 1) is
     // top-right.
     private static final FloatBuffer FULL_RECTANGLE_BUF = GlUtil.createFloatBuffer(new float[] {
-            -1.0f, -1.0f, // Bottom left.
-            1.0f, -1.0f, // Bottom right.
-            -1.0f, 1.0f, // Top left.
-            1.0f, 1.0f, // Top right.
+            -0.16f, -0.16f, // Bottom left.
+            0.16f, -0.16f, // Bottom right.
+            -0.16f, 0.16f, // Top left.
+            0.16f, 0.16f, // Top right.
     });
 
     // Texture coordinates - (0, 0) is bottom-left and (1, 1) is top-right.
@@ -193,7 +193,7 @@ public class PeerRenderer {
 
     private void drawRectangle(int x, int y, int width, int height) {
         // Draw quad.
-        GLES20.glViewport(x, y, width, height);
+        //GLES20.glViewport(x, y, width, height);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
     }
 }
