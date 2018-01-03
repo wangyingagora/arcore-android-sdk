@@ -558,7 +558,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
         bitmap.copyPixelsToBuffer(byteBuffer);
         byte[] data = byteBuffer.array();
 
-        mSource.getConsumer().consumeByteArrayFrame(data, 7,
+        mSource.getConsumer().consumeByteArrayFrame(data, 6,
                 width, height, 270, System.currentTimeMillis());
     }
 
