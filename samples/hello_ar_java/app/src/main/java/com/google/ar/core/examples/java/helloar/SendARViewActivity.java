@@ -25,9 +25,7 @@ import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Looper;
 import android.os.Message;
-import android.support.annotation.NonNull;
 import android.support.design.widget.BaseTransientBottomBar;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
@@ -64,8 +62,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -73,8 +74,6 @@ import javax.microedition.khronos.opengles.GL10;
 import io.agora.rtc.Constants;
 import io.agora.rtc.IRtcEngineEventHandler;
 import io.agora.rtc.RtcEngine;
-import io.agora.rtc.mediaio.IVideoFrameConsumer;
-import io.agora.rtc.mediaio.IVideoSource;
 import io.agora.rtc.mediaio.MediaIO;
 
 /**
@@ -82,7 +81,8 @@ import io.agora.rtc.mediaio.MediaIO;
  * ARCore API. The application will display any detected planes and will allow the user to tap on a
  * plane to place a 3d model of the Android robot.
  */
-public class SendARViewActivity extends AppCompatActivity implements GLSurfaceView.Renderer {
+public class SendARViewActivity extends AppCompatActivity implements GLSurfaceView.Renderer,
+        AgoraVideoRender.OnFrameListener {
     private static final String TAG = SendARViewActivity.class.getSimpleName();
 
     // Rendering. The Renderers are created here, and initialized when the GL surface is created.
@@ -112,8 +112,12 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
     private AgoraVideoSource mSource;
     private AgoraVideoRender mRender;
 
-    private Handler mGLHandler;
+    private IRtcEngineEventHandler mRtcEventHandler;
+
     private PeerRenderer mPeerObject = new PeerRenderer();
+
+    private ConcurrentHashMap<Integer, AgoraVideoRender> mRemoteRenders = new ConcurrentHashMap<>();
+    //private ConcurrentHashMap<Integer, Peer> mRenderData = new ConcurrentHashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -195,12 +199,38 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
         };
 
         try {
-            mRtcEngine = RtcEngine.create(this, getString(R.string.private_broadcasting_app_id), new IRtcEngineEventHandler() {
+            mRtcEventHandler = new IRtcEngineEventHandler() {
                 @Override
                 public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
                     printLog(channel);
                 }
-            });
+
+                @Override
+                public void onFirstRemoteVideoDecoded(int uid, int width, int height, int elapsed) {
+                    addRemoteRender(uid);
+                }
+
+                @Override
+                public void onUserOffline(int uid, int reason) {
+                    mRemoteRenders.remove(uid);
+                }
+
+                @Override
+                public void onUserJoined(int uid, int elapsed) {
+                }
+
+                @Override
+                public void onError(int err) {
+                    printLog("Error: " + err);
+                }
+
+                @Override
+                public void onWarning(int warn) {
+                    printLog("Warning: " + warn);
+                }
+            };
+
+            mRtcEngine = RtcEngine.create(this, getString(R.string.private_broadcasting_app_id), mRtcEventHandler);
             mRtcEngine.setParameters("{\"rtc.log_filter\": 65535}");
             mRtcEngine.setChannelProfile(Constants.CHANNEL_PROFILE_LIVE_BROADCASTING);
             mRtcEngine.enableVideo();
@@ -216,7 +246,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
 
             //mRtcEngine.startPreview();
 
-            mRtcEngine.joinChannel(null, "1234", "OpenLive", 0);
+            mRtcEngine.joinChannel(null, "arcore", "OpenLive", 0);
 
         } catch (Exception ex) {
             printLog(ex.toString());
@@ -455,6 +485,8 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
 
             // Visualize anchors created by touch.
             float scaleFactor = 1.0f;
+
+            int i = 0;
             for (Anchor anchor : mAnchors) {
                 if (anchor.getTrackingState() != TrackingState.TRACKING) {
                     continue;
@@ -469,8 +501,22 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
                 mVirtualObject.draw(viewmtx, projmtx, lightIntensity);
                 mVirtualObjectShadow.draw(viewmtx, projmtx, lightIntensity);
 
-                mPeerObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
-                mPeerObject.draw(viewmtx, projmtx);
+
+                Iterator<Integer> it = mRemoteRenders.keySet().iterator();
+                int j = 0;
+                while (it.hasNext()) {
+                    if (i == j) {
+                        Peer peer = mRemoteRenders.get(it.next()).getPeer();
+                        if (peer.data == null || peer.data.capacity() == 0) {
+                            break;
+                        }
+                        mPeerObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
+                        mPeerObject.draw(viewmtx, projmtx, peer);
+                    }
+                    ++j;
+                }
+
+                ++i;
             }
 
             sendARViewMessage(gl);
@@ -478,6 +524,23 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
             // Avoid crashing the application due to unhandled exceptions.
             Log.e(TAG, "Exception on the OpenGL thread", t);
         }
+    }
+
+    @Override
+    public void consumeByteBufferFrame(int uid, ByteBuffer data, int pixelFormat,
+                                      int width, int height, int rotation, long ts) {
+        if (pixelFormat != MediaIO.PixelFormat.RGBA.intValue()) return;
+
+        Peer peer = new Peer();
+        peer.uid = uid;
+        peer.data = data;
+        peer.width = width;
+        peer.height = height;
+        peer.rotation = rotation;
+        peer.ts = ts;
+        AgoraVideoRender render = mRemoteRenders.get(uid);
+        render.setPeer(peer);
+        mRemoteRenders.put(uid, render);
     }
 
     private void showSnackbarMessage(String message, boolean finishOnDismiss) {
@@ -578,6 +641,16 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
 
         mSource.getConsumer().consumeByteArrayFrame(data, 6,
                 width, height, 270, System.currentTimeMillis());
+    }
+
+    private void addRemoteRender(int uid) {
+        //mRenderData.put(uid, new Peer());
+        //mRemoteRenders.put(uid, new AgoraVideoRender(new Peer(), this));
+        Peer peer = new Peer();
+        peer.uid = uid;
+        AgoraVideoRender render = new AgoraVideoRender(peer, this);
+        mRemoteRenders.put(uid, render);
+        mRtcEngine.setRemoteVideoRenderer(uid, render);
     }
 
     private static final int BASE_VALUE_PERMISSION = 0X0001;

@@ -12,22 +12,27 @@ import io.agora.rtc.mediaio.MediaIO;
  */
 
 public class AgoraVideoRender implements IVideoRenderer {
-    private int mUid;
+    private OnFrameListener mListener;
+    private Peer mPeer;
 
     public AgoraVideoRender() {
-        mUid = 0;
     }
 
-    public AgoraVideoRender(int uid) {
-        mUid = uid;
+    public AgoraVideoRender(Peer peer, OnFrameListener listener) {
+        mPeer = peer;
+        mListener = listener;
     }
 
-    public int getUid() {
-        return mUid;
+    public Peer getPeer() {
+        return mPeer;
     }
 
-    public void setUid(int uid) {
-        this.mUid = uid;
+    public void setPeer(Peer mPeer) {
+        this.mPeer = mPeer;
+    }
+
+    public void setOnFrameListener(OnFrameListener listener) {
+        mListener = listener;
     }
 
     @Override
@@ -52,16 +57,19 @@ public class AgoraVideoRender implements IVideoRenderer {
 
     @Override
     public int getBufferType() {
-        return MediaIO.BufferType.BYTE_ARRAY.intValue();
+        return MediaIO.BufferType.BYTE_BUFFER.intValue();
     }
 
     @Override
     public int getPixelFormat() {
-        return MediaIO.PixelFormat.I420.intValue();
+        return MediaIO.PixelFormat.RGBA.intValue();
     }
 
     @Override
     public void consumeByteBufferFrame(ByteBuffer byteBuffer, int i, int i1, int i2, int i3, long l) {
+        if (mListener != null) {
+            mListener.consumeByteBufferFrame(mPeer.uid, byteBuffer, i, i1,i2, i3, l);
+        }
     }
 
     @Override
@@ -72,5 +80,9 @@ public class AgoraVideoRender implements IVideoRenderer {
     @Override
     public void consumeTextureFrame(int i, int i1, int i2, int i3, int i4, long l, float[] floats) {
 
+    }
+
+    public interface OnFrameListener {
+        void consumeByteBufferFrame(int uid, ByteBuffer data, int pixelFormat, int width, int height, int rotation, long ts);
     }
 }

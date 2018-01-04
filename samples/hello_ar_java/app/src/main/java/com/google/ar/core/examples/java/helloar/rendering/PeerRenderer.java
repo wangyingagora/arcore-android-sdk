@@ -21,6 +21,7 @@ import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
 
+import com.google.ar.core.examples.java.helloar.Peer;
 import com.google.ar.core.examples.java.helloar.R;
 
 import java.io.IOException;
@@ -60,8 +61,6 @@ public class PeerRenderer {
     private float[] mModelMatrix = new float[16];
     private float[] mModelViewMatrix = new float[16];
     private float[] mModelViewProjectionMatrix = new float[16];
-
-    private ConcurrentHashMap<Integer, byte[]> mData = new ConcurrentHashMap<>();
 
     // Vertex coordinates in Normalized Device Coordinates, i.e. (-1, -1) is bottom-left and (1, 1) is
     // top-right.
@@ -154,7 +153,7 @@ public class PeerRenderer {
      * @see #updateModelMatrix(float[], float)
      * @see Matrix
      */
-    public void draw(float[] cameraView, float[] cameraPerspective) {
+    public void draw(float[] cameraView, float[] cameraPerspective, Peer peer) {
 
         ShaderUtil.checkGLError(TAG, "Before draw");
 
@@ -173,8 +172,10 @@ public class PeerRenderer {
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextures[0]);
 
-        /*GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, width,
-                height, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, mData);*/
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, peer.width,
+                peer.height, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, peer.data);
+
+        ShaderUtil.checkGLError(TAG, "upload remote peer data");
 
         GLES20.glVertexAttribPointer(
             mPositionAttribute, 2, GLES20.GL_FLOAT, false, 0, FULL_RECTANGLE_BUF);
