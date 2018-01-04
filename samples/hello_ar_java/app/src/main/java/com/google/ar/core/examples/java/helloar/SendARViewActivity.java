@@ -529,7 +529,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
     @Override
     public void consumeByteBufferFrame(int uid, ByteBuffer data, int pixelFormat,
                                       int width, int height, int rotation, long ts) {
-        if (pixelFormat != MediaIO.PixelFormat.RGBA.intValue()) return;
+        //if (pixelFormat != MediaIO.PixelFormat.RGBA.intValue()) return;
 
         Peer peer = new Peer();
         peer.uid = uid;

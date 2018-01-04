@@ -62,7 +62,8 @@ public class AgoraVideoRender implements IVideoRenderer {
 
     @Override
     public int getPixelFormat() {
-        return MediaIO.PixelFormat.RGBA.intValue();
+        // return MediaIO.PixelFormat.RGBA.intValue();
+        return 6;
     }
 
     @Override
