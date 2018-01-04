@@ -54,7 +54,7 @@ public class PeerRenderer {
     // Shader location: object attributes.
     private int mPositionAttribute;
     private int mTexCoordAttribute;
-    private int mTextureLocation;
+    //private int mTextureLocation;
     private int mModelViewProjectionUniform;
 
     // Temporary matrices allocated here to reduce number of allocations for each frame.
@@ -88,14 +88,15 @@ public class PeerRenderer {
      * @param context Context for loading the shader and below-named model and texture assets.
      */
     public void createOnGlThread(Context context) throws IOException {;
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glGenTextures(mTextures.length, mTextures, 0);
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, mTextures[0]);
 
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,
-            GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR_MIPMAP_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D,
-            GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameterf(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
 
         ShaderUtil.checkGLError(TAG, "Texture loading");
@@ -115,7 +116,7 @@ public class PeerRenderer {
         ShaderUtil.checkGLError(TAG, "Program creation");
 
         mModelViewProjectionUniform = GLES20.glGetUniformLocation(mProgram, "u_ModelViewProjection");
-        mTextureLocation = GLES20.glGetUniformLocation(mProgram, "rgb_tex");
+        //mTextureLocation = GLES20.glGetUniformLocation(mProgram, "rgb_tex");
         //GLES20.glUniform1i(shader.glShader.getUniformLocation("rgb_tex"), 0);
 
         //mModelViewUniform = GLES20.glGetUniformLocation(mProgram, "u_ModelView");
@@ -166,7 +167,7 @@ public class PeerRenderer {
 
         GLES20.glUniformMatrix4fv(
                 mModelViewProjectionUniform, 1, false, mModelViewProjectionMatrix, 0);
-        GLES20.glUniform1i(mTextureLocation, 0);
+        //GLES20.glUniform1i(mTextureLocation, 0);
 
         // Attach the object texture.
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
