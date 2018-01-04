@@ -64,6 +64,7 @@ import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -116,7 +117,8 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
 
     private PeerRenderer mPeerObject = new PeerRenderer();
 
-    private ConcurrentHashMap<Integer, AgoraVideoRender> mRemoteRenders = new ConcurrentHashMap<>();
+    private List<AgoraVideoRender> mRemoteRenders = new ArrayList<>(20);
+    //private ConcurrentHashMap<Integer, AgoraVideoRender> mRemoteRenders = new ConcurrentHashMap<>();
     //private ConcurrentHashMap<Integer, Peer> mRenderData = new ConcurrentHashMap<>();
 
     @Override
@@ -502,21 +504,15 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
                 mVirtualObjectShadow.draw(viewmtx, projmtx, lightIntensity);
 
 
-                Iterator<Integer> it = mRemoteRenders.keySet().iterator();
-                int j = 0;
-                while (it.hasNext()) {
-                    if (i == j) {
-                        Peer peer = mRemoteRenders.get(it.next()).getPeer();
-                        if (peer.data == null || peer.data.capacity() == 0) {
-                            break;
-                        }
-                        mPeerObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
-                        mPeerObject.draw(viewmtx, projmtx, peer);
-                    }
-                    ++j;
-                }
-
+                AgoraVideoRender render = mRemoteRenders.get(i);
                 ++i;
+                if (render == null) continue;
+
+                Peer peer = render.getPeer();
+                if (peer.data == null || peer.data.capacity() == 0) continue;
+
+                mPeerObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
+                mPeerObject.draw(viewmtx, projmtx, peer);
             }
 
             sendARViewMessage(gl);
@@ -531,16 +527,26 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
                                       int width, int height, int rotation, long ts) {
         //if (pixelFormat != MediaIO.PixelFormat.RGBA.intValue()) return;
 
-        Peer peer = new Peer();
-        peer.uid = uid;
-        peer.data = data;
-        peer.width = width;
-        peer.height = height;
-        peer.rotation = rotation;
-        peer.ts = ts;
-        AgoraVideoRender render = mRemoteRenders.get(uid);
-        render.setPeer(peer);
-        mRemoteRenders.put(uid, render);
+        synchronized (mRemoteRenders) {
+            for (int i = 0; i < mRemoteRenders.size(); ++i) {
+                AgoraVideoRender render = mRemoteRenders.get(i);
+                if (render == null) continue;
+
+                Peer peer = render.getPeer();
+                if (peer == null) continue;
+
+                if (uid != peer.uid) continue;
+
+                peer.uid = uid;
+                peer.data = data;
+                peer.width = width;
+                peer.height = height;
+                peer.rotation = rotation;
+                peer.ts = ts;
+
+                render.setPeer(peer);
+            }
+        }
     }
 
     private void showSnackbarMessage(String message, boolean finishOnDismiss) {
@@ -649,7 +655,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
         Peer peer = new Peer();
         peer.uid = uid;
         AgoraVideoRender render = new AgoraVideoRender(peer, this);
-        mRemoteRenders.put(uid, render);
+        mRemoteRenders.add(render);
         mRtcEngine.setRemoteVideoRenderer(uid, render);
     }
 
