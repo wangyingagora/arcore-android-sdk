@@ -20,7 +20,6 @@ import android.Manifest;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.opengl.GLES20;
-import android.opengl.GLException;
 import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.os.Handler;
@@ -61,15 +60,10 @@ import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -77,7 +71,6 @@ import javax.microedition.khronos.opengles.GL10;
 import io.agora.rtc.Constants;
 import io.agora.rtc.IRtcEngineEventHandler;
 import io.agora.rtc.RtcEngine;
-import io.agora.rtc.mediaio.MediaIO;
 
 /**
  * This is a simple example that shows how to create an augmented reality (AR) application using the
@@ -204,7 +197,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
             mRtcEventHandler = new IRtcEngineEventHandler() {
                 @Override
                 public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
-                    printLog(channel);
+                    printLog("joined channel " + channel);
                 }
 
                 @Override
@@ -254,7 +247,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
 
             //mRtcEngine.startPreview();
 
-            mRtcEngine.joinChannel(null, "arcore", "OpenLive", 0);
+            mRtcEngine.joinChannel(null, "arcore", "ARCore with RtcEngine", 0);
 
         } catch (Exception ex) {
             printLog(ex.toString());
@@ -583,33 +576,32 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
     private void sendARViewMessage(GL10 gl) {
         int w = mSurfaceView.getWidth();
         int h = mSurfaceView.getHeight();
-        int screenshotSize = w * h;
+        int sceneSize = w * h;
         if (mSendBuffer == null) {
-            mSendBuffer = ByteBuffer.allocateDirect(screenshotSize * 4);
+            mSendBuffer = ByteBuffer.allocateDirect(sceneSize * 4);
             mSendBuffer.order(ByteOrder.nativeOrder());
         }
 
         gl.glReadPixels(0, 0, w, h, GL10.GL_RGBA, GL10.GL_UNSIGNED_BYTE, mSendBuffer);
-        int pixelsBuffer[] = new int[screenshotSize];
+        int pixelsBuffer[] = new int[sceneSize];
         mSendBuffer.asIntBuffer().get(pixelsBuffer);
         mSendBuffer = null;
         Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
-        bitmap.setPixels(pixelsBuffer, screenshotSize - w, -w, 0,
-                0, w, h);
+        bitmap.setPixels(pixelsBuffer, sceneSize - w, -w, 0, 0, w, h);
         pixelsBuffer = null;
 
-        short sBuffer[] = new short[screenshotSize];
-        ShortBuffer sb = ShortBuffer.wrap(sBuffer);
-        bitmap.copyPixelsToBuffer(sb);
+        short sBuffer[] = new short[sceneSize];
+        ShortBuffer tmpBuffer = ShortBuffer.wrap(sBuffer);
+        bitmap.copyPixelsToBuffer(tmpBuffer);
 
         // Making created bitmap (from OpenGL points) compatible with
         // Android bitmap
-        for (int i = 0; i < screenshotSize; ++i) {
+        for (int i = 0; i < sceneSize; ++i) {
             short v = sBuffer[i];
             sBuffer[i] = (short) (((v & 0x1f) << 11) | (v & 0x7e0) | ((v & 0xf800) >> 11));
         }
-        sb.rewind();
-        bitmap.copyPixelsFromBuffer(sb);
+        tmpBuffer.rewind();
+        bitmap.copyPixelsFromBuffer(tmpBuffer);
         Bitmap result = bitmap.copy(Bitmap.Config.ARGB_8888,false);
 
         Message message = Message.obtain();
@@ -630,8 +622,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
         bitmap.copyPixelsToBuffer(byteBuffer);
         byte[] data = byteBuffer.array();
 
-        mSource.getConsumer().consumeByteArrayFrame(data, 6,
-                width, height, 270, System.currentTimeMillis());
+        mSource.getConsumer().consumeByteArrayFrame(data, 6, width, height, 270, System.currentTimeMillis());
     }
 
     private void addRemoteRender(int uid) {
