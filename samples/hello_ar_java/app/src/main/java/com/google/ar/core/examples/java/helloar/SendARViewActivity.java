@@ -180,78 +180,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
         }
         mSession.configure(config);
 
-
-        HandlerThread thread = new HandlerThread("ArSendThread");
-        thread.start();
-        mSenderHandler = new Handler(thread.getLooper()) {
-            @Override
-            public void handleMessage(Message msg) {
-                switch (msg.what) {
-                    case SEND_AR_VIEW:
-                        sendARView((Bitmap)msg.obj);
-                }
-            }
-        };
-
-        try {
-            mRtcEventHandler = new IRtcEngineEventHandler() {
-                @Override
-                public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
-                    printLog("joined channel " + channel);
-                }
-
-                @Override
-                public void onFirstRemoteVideoDecoded(int uid, int width, int height, int elapsed) {
-                    addRemoteRender(uid);
-                }
-
-                @Override
-                public void onUserOffline(int uid, int reason) {
-                    for (int i = 0; i < mRemoteRenders.size(); ++i) {
-                        AgoraVideoRender render = mRemoteRenders.get(i);
-                        if (render.getPeer().uid == uid) {
-                            mRemoteRenders.remove(uid);
-                            mRtcEngine.setRemoteVideoRenderer(uid, null);
-                        }
-                    }
-                }
-
-                @Override
-                public void onUserJoined(int uid, int elapsed) {
-                }
-
-                @Override
-                public void onError(int err) {
-                    printLog("Error: " + err);
-                }
-
-                @Override
-                public void onWarning(int warn) {
-                    printLog("Warning: " + warn);
-                }
-            };
-
-            mRtcEngine = RtcEngine.create(this, getString(R.string.private_broadcasting_app_id), mRtcEventHandler);
-            mRtcEngine.setParameters("{\"rtc.log_filter\": 65535}");
-            mRtcEngine.setChannelProfile(Constants.CHANNEL_PROFILE_LIVE_BROADCASTING);
-            mRtcEngine.enableVideo();
-            mRtcEngine.enableDualStreamMode(true);
-
-            mRtcEngine.setVideoProfile(Constants.VIDEO_PROFILE_480P, false);
-            mRtcEngine.setClientRole(Constants.CLIENT_ROLE_BROADCASTER);
-
-            mSource = new AgoraVideoSource();
-            mRender = new AgoraVideoRender(0, true);
-            mRtcEngine.setVideoSource(mSource);
-            mRtcEngine.setLocalVideoRenderer(mRender);
-
-            //mRtcEngine.startPreview();
-
-            mRtcEngine.joinChannel(null, "arcore", "ARCore with RtcEngine", 0);
-
-        } catch (Exception ex) {
-            printLog(ex.toString());
-        }
+        initRtcEngine();
     }
 
     @Override
@@ -384,10 +313,6 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
         } catch (IOException ex) {
             printLog(ex.toString());
         }
-
-        //Looper.prepare();
-        //mGLHandler = new Handler(Looper.myLooper());
-        //Looper.loop();
     }
 
     @Override
@@ -520,6 +445,80 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
             // Avoid crashing the application due to unhandled exceptions.
             Log.e(TAG, "Exception on the OpenGL thread", t);
         }
+    }
+
+    private void initRtcEngine() {
+        try {
+            mRtcEventHandler = new IRtcEngineEventHandler() {
+                @Override
+                public void onJoinChannelSuccess(String channel, int uid, int elapsed) {
+                    printLog("joined channel " + channel);
+                }
+
+                @Override
+                public void onFirstRemoteVideoDecoded(int uid, int width, int height, int elapsed) {
+                    addRemoteRender(uid);
+                }
+
+                @Override
+                public void onUserOffline(int uid, int reason) {
+                    for (int i = 0; i < mRemoteRenders.size(); ++i) {
+                        AgoraVideoRender render = mRemoteRenders.get(i);
+                        if (render.getPeer().uid == uid) {
+                            mRemoteRenders.remove(uid);
+                            mRtcEngine.setRemoteVideoRenderer(uid, null);
+                        }
+                    }
+                }
+
+                @Override
+                public void onUserJoined(int uid, int elapsed) {
+                }
+
+                @Override
+                public void onError(int err) {
+                    printLog("Error: " + err);
+                }
+
+                @Override
+                public void onWarning(int warn) {
+                    printLog("Warning: " + warn);
+                }
+            };
+
+            mRtcEngine = RtcEngine.create(this, getString(R.string.private_broadcasting_app_id), mRtcEventHandler);
+            mRtcEngine.setParameters("{\"rtc.log_filter\": 65535}");
+            mRtcEngine.setChannelProfile(Constants.CHANNEL_PROFILE_LIVE_BROADCASTING);
+            mRtcEngine.enableVideo();
+            mRtcEngine.enableDualStreamMode(true);
+
+            mRtcEngine.setVideoProfile(Constants.VIDEO_PROFILE_480P, false);
+            mRtcEngine.setClientRole(Constants.CLIENT_ROLE_BROADCASTER);
+
+            mSource = new AgoraVideoSource();
+            mRender = new AgoraVideoRender(0, true);
+            mRtcEngine.setVideoSource(mSource);
+            mRtcEngine.setLocalVideoRenderer(mRender);
+
+            //mRtcEngine.startPreview();
+
+            mRtcEngine.joinChannel(null, "arcore", "ARCore with RtcEngine", 0);
+
+        } catch (Exception ex) {
+            printLog(ex.toString());
+        }
+
+        HandlerThread thread = new HandlerThread("ArSendThread");
+        thread.start();
+        mSenderHandler = new Handler(thread.getLooper()) {
+            @Override
+            public void handleMessage(Message msg) {
+                switch (msg.what) {
+                    case SEND_AR_VIEW:
+                        sendARView((Bitmap)msg.obj);
+                }
+            }
+        };
     }
 
     private void showSnackbarMessage(String message, boolean finishOnDismiss) {
