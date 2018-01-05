@@ -60,7 +60,9 @@ import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -82,8 +84,7 @@ import io.agora.rtc.mediaio.MediaIO;
  * ARCore API. The application will display any detected planes and will allow the user to tap on a
  * plane to place a 3d model of the Android robot.
  */
-public class SendARViewActivity extends AppCompatActivity implements GLSurfaceView.Renderer,
-        AgoraVideoRender.OnFrameListener {
+public class SendARViewActivity extends AppCompatActivity implements GLSurfaceView.Renderer {
     private static final String TAG = SendARViewActivity.class.getSimpleName();
 
     // Rendering. The Renderers are created here, and initialized when the GL surface is created.
@@ -112,14 +113,13 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
     private final static int SEND_AR_VIEW = 1;
     private AgoraVideoSource mSource;
     private AgoraVideoRender mRender;
+    private ByteBuffer mSendBuffer;
 
     private IRtcEngineEventHandler mRtcEventHandler;
 
     private PeerRenderer mPeerObject = new PeerRenderer();
 
     private List<AgoraVideoRender> mRemoteRenders = new ArrayList<>(20);
-    //private ConcurrentHashMap<Integer, AgoraVideoRender> mRemoteRenders = new ConcurrentHashMap<>();
-    //private ConcurrentHashMap<Integer, Peer> mRenderData = new ConcurrentHashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -214,7 +214,13 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
 
                 @Override
                 public void onUserOffline(int uid, int reason) {
-                    mRemoteRenders.remove(uid);
+                    for (int i = 0; i < mRemoteRenders.size(); ++i) {
+                        AgoraVideoRender render = mRemoteRenders.get(i);
+                        if (render.getPeer().uid == uid) {
+                            mRemoteRenders.remove(uid);
+                            mRtcEngine.setRemoteVideoRenderer(uid, null);
+                        }
+                    }
                 }
 
                 @Override
@@ -242,7 +248,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
             mRtcEngine.setClientRole(Constants.CLIENT_ROLE_BROADCASTER);
 
             mSource = new AgoraVideoSource();
-            mRender = new AgoraVideoRender();
+            mRender = new AgoraVideoRender(0, true);
             mRtcEngine.setVideoSource(mSource);
             mRtcEngine.setLocalVideoRenderer(mRender);
 
@@ -503,49 +509,23 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
                 mVirtualObject.draw(viewmtx, projmtx, lightIntensity);
                 mVirtualObjectShadow.draw(viewmtx, projmtx, lightIntensity);
 
+                if (mRemoteRenders.size() > i) {
+                    AgoraVideoRender render = mRemoteRenders.get(i);
+                    ++i;
+                    if (render == null) continue;
 
-                AgoraVideoRender render = mRemoteRenders.get(i);
-                ++i;
-                if (render == null) continue;
+                    Peer peer = render.getPeer();
+                    if (peer.data == null || peer.data.capacity() == 0) continue;
 
-                Peer peer = render.getPeer();
-                if (peer.data == null || peer.data.capacity() == 0) continue;
-
-                mPeerObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
-                mPeerObject.draw(viewmtx, projmtx, peer);
+                    mPeerObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
+                    mPeerObject.draw(viewmtx, projmtx, peer);
+                }
             }
 
             sendARViewMessage(gl);
         } catch (Throwable t) {
             // Avoid crashing the application due to unhandled exceptions.
             Log.e(TAG, "Exception on the OpenGL thread", t);
-        }
-    }
-
-    @Override
-    public void consumeByteBufferFrame(int uid, ByteBuffer data, int pixelFormat,
-                                      int width, int height, int rotation, long ts) {
-        //if (pixelFormat != MediaIO.PixelFormat.RGBA.intValue()) return;
-
-        synchronized (mRemoteRenders) {
-            for (int i = 0; i < mRemoteRenders.size(); ++i) {
-                AgoraVideoRender render = mRemoteRenders.get(i);
-                if (render == null) continue;
-
-                Peer peer = render.getPeer();
-                if (peer == null) continue;
-
-                if (uid != peer.uid) continue;
-
-                peer.uid = uid;
-                peer.data = data;
-                peer.width = width;
-                peer.height = height;
-                peer.rotation = rotation;
-                peer.ts = ts;
-
-                render.setPeer(peer);
-            }
         }
     }
 
@@ -603,33 +583,38 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
     private void sendARViewMessage(GL10 gl) {
         int w = mSurfaceView.getWidth();
         int h = mSurfaceView.getHeight();
-        int bitmapBuffer[] = new int[w * h];
-        int bitmapSource[] = new int[w * h];
-        IntBuffer intBuffer = IntBuffer.wrap(bitmapBuffer);
-        intBuffer.position(0);
-
-        try {
-            gl.glReadPixels(0, 0, w, h, GL10.GL_RGBA, GL10.GL_UNSIGNED_BYTE, intBuffer);
-            int offset1, offset2;
-            for (int i = 0; i < h; i++) {
-                offset1 = i * w;
-                offset2 = (h - i - 1) * w;
-                for (int j = 0; j < w; j++) {
-                    int texturePixel = bitmapBuffer[offset1 + j];
-                    int blue = (texturePixel >> 16) & 0xff;
-                    int red = (texturePixel << 16) & 0x00ff0000;
-                    int pixel = (texturePixel & 0xff00ff00) | red | blue;
-                    bitmapSource[offset2 + j] = pixel;
-                }
-            }
-        } catch (GLException e) {
-            Log.e(TAG, "createBitmapFromGLSurface: " + e.getMessage(), e);
+        int screenshotSize = w * h;
+        if (mSendBuffer == null) {
+            mSendBuffer = ByteBuffer.allocateDirect(screenshotSize * 4);
+            mSendBuffer.order(ByteOrder.nativeOrder());
         }
 
-        Bitmap bitmap = Bitmap.createBitmap(bitmapSource, w, h, Bitmap.Config.ARGB_8888);
+        gl.glReadPixels(0, 0, w, h, GL10.GL_RGBA, GL10.GL_UNSIGNED_BYTE, mSendBuffer);
+        int pixelsBuffer[] = new int[screenshotSize];
+        mSendBuffer.asIntBuffer().get(pixelsBuffer);
+        mSendBuffer = null;
+        Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
+        bitmap.setPixels(pixelsBuffer, screenshotSize - w, -w, 0,
+                0, w, h);
+        pixelsBuffer = null;
+
+        short sBuffer[] = new short[screenshotSize];
+        ShortBuffer sb = ShortBuffer.wrap(sBuffer);
+        bitmap.copyPixelsToBuffer(sb);
+
+        // Making created bitmap (from OpenGL points) compatible with
+        // Android bitmap
+        for (int i = 0; i < screenshotSize; ++i) {
+            short v = sBuffer[i];
+            sBuffer[i] = (short) (((v & 0x1f) << 11) | (v & 0x7e0) | ((v & 0xf800) >> 11));
+        }
+        sb.rewind();
+        bitmap.copyPixelsFromBuffer(sb);
+        Bitmap result = bitmap.copy(Bitmap.Config.ARGB_8888,false);
+
         Message message = Message.obtain();
         message.what = SEND_AR_VIEW;
-        message.obj = bitmap;
+        message.obj = result;
         mSenderHandler.sendMessage(message);
     }
 
@@ -650,11 +635,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
     }
 
     private void addRemoteRender(int uid) {
-        //mRenderData.put(uid, new Peer());
-        //mRemoteRenders.put(uid, new AgoraVideoRender(new Peer(), this));
-        Peer peer = new Peer();
-        peer.uid = uid;
-        AgoraVideoRender render = new AgoraVideoRender(peer, this);
+        AgoraVideoRender render = new AgoraVideoRender(uid, false);
         mRemoteRenders.add(render);
         mRtcEngine.setRemoteVideoRenderer(uid, render);
     }

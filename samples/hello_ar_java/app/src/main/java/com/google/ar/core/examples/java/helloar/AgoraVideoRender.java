@@ -12,27 +12,17 @@ import io.agora.rtc.mediaio.MediaIO;
  */
 
 public class AgoraVideoRender implements IVideoRenderer {
-    private OnFrameListener mListener;
     private Peer mPeer;
+    private boolean mIsLocal;
 
-    public AgoraVideoRender() {
-    }
-
-    public AgoraVideoRender(Peer peer, OnFrameListener listener) {
-        mPeer = peer;
-        mListener = listener;
+    public AgoraVideoRender(int uid, boolean local) {
+        mPeer = new Peer();
+        mPeer.uid = uid;
+        mIsLocal = local;
     }
 
     public Peer getPeer() {
         return mPeer;
-    }
-
-    public void setPeer(Peer mPeer) {
-        this.mPeer = mPeer;
-    }
-
-    public void setOnFrameListener(OnFrameListener listener) {
-        mListener = listener;
     }
 
     @Override
@@ -67,19 +57,23 @@ public class AgoraVideoRender implements IVideoRenderer {
     }
 
     @Override
-    public void consumeByteBufferFrame(ByteBuffer byteBuffer, int i, int i1, int i2, int i3, long l) {
-        if (mListener != null) {
-            mListener.consumeByteBufferFrame(mPeer.uid, byteBuffer, i, i1,i2, i3, l);
+    public void consumeByteBufferFrame(ByteBuffer buffer, int format, int width, int height, int rotation, long ts) {
+        if (!mIsLocal) {
+            mPeer.data = buffer;
+            mPeer.width = width;
+            mPeer.height = height;
+            mPeer.rotation = rotation;
+            mPeer.ts = ts;
         }
     }
 
     @Override
-    public void consumeByteArrayFrame(byte[] bytes, int i, int i1, int i2, int i3, long l) {
+    public void consumeByteArrayFrame(byte[] data, int format, int width, int height, int rotation, long ts) {
         //Log.e("AgoraVideoRender", "consumeByteArrayFrame");
     }
 
     @Override
-    public void consumeTextureFrame(int i, int i1, int i2, int i3, int i4, long l, float[] floats) {
+    public void consumeTextureFrame(int texId, int format, int width, int height, int rotation, long ts, float[] matrix) {
 
     }
 
