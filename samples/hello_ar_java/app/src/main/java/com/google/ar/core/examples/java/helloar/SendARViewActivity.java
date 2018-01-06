@@ -214,8 +214,22 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
         if (mSession != null) {
             mSession.pause();
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        mSendBuffer = null;
+        for (int i = 0; i < mRemoteRenders.size(); ++i) {
+            AgoraVideoRender render = mRemoteRenders.get(i);
+            //mRtcEngine.setRemoteVideoRenderer(render.getPeer().uid, null);
+        }
+        mRemoteRenders.clear();
+        mSenderHandler.getLooper().quit();
 
         RtcEngine.destroy();
+
     }
 
     @Override
@@ -580,11 +594,11 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
             mSendBuffer = ByteBuffer.allocateDirect(sceneSize * 4);
             mSendBuffer.order(ByteOrder.nativeOrder());
         }
+        mSendBuffer.position(0);
 
         gl.glReadPixels(0, 0, w, h, GL10.GL_RGBA, GL10.GL_UNSIGNED_BYTE, mSendBuffer);
         int pixelsBuffer[] = new int[sceneSize];
         mSendBuffer.asIntBuffer().get(pixelsBuffer);
-        mSendBuffer = null;
         Bitmap bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
         bitmap.setPixels(pixelsBuffer, sceneSize - w, -w, 0, 0, w, h);
         pixelsBuffer = null;
