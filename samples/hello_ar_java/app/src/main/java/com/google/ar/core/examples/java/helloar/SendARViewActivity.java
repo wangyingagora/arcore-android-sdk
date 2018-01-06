@@ -35,6 +35,7 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.Toast;
 
 import com.google.ar.core.Anchor;
@@ -107,6 +108,10 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
     private AgoraVideoSource mSource;
     private AgoraVideoRender mRender;
     private ByteBuffer mSendBuffer;
+
+    private boolean mIsARMode;
+    private boolean mHidePoint;
+    private boolean mHidePlane;
 
     private IRtcEngineEventHandler mRtcEventHandler;
 
@@ -399,14 +404,16 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
             // Compute lighting from average intensity of the image.
             final float lightIntensity = frame.getLightEstimate().getPixelIntensity();
 
-            // Visualize tracked points.
-            PointCloud pointCloud = frame.acquirePointCloud();
-            mPointCloud.update(pointCloud);
-            mPointCloud.draw(viewmtx, projmtx);
+            if (isShowPointCloud()) {
+                // Visualize tracked points.
+                PointCloud pointCloud = frame.acquirePointCloud();
+                mPointCloud.update(pointCloud);
+                mPointCloud.draw(viewmtx, projmtx);
 
-            // Application is responsible for releasing the point cloud resources after
-            // using it.
-            pointCloud.release();
+                // Application is responsible for releasing the point cloud resources after
+                // using it.
+                pointCloud.release();
+            }
 
             // Check if we detected at least one plane. If so, hide the loading message.
             if (mMessageSnackbar != null) {
@@ -419,9 +426,11 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
                 }
             }
 
-            // Visualize planes.
-            mPlaneRenderer.drawPlanes(
-                mSession.getAllTrackables(Plane.class), camera.getDisplayOrientedPose(), projmtx);
+            if (isShowPlane()) {
+                // Visualize planes.
+                mPlaneRenderer.drawPlanes(
+                        mSession.getAllTrackables(Plane.class), camera.getDisplayOrientedPose(), projmtx);
+            }
 
             // Visualize anchors created by touch.
             float scaleFactor = 1.0f;
@@ -435,22 +444,24 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
                 // during calls to session.update() as ARCore refines its estimate of the world.
                 anchor.getPose().toMatrix(mAnchorMatrix, 0);
 
-                // Update and draw the model and its shadow.
-                mVirtualObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
-                mVirtualObjectShadow.updateModelMatrix(mAnchorMatrix, scaleFactor);
-                mVirtualObject.draw(viewmtx, projmtx, lightIntensity);
-                mVirtualObjectShadow.draw(viewmtx, projmtx, lightIntensity);
+                if (mIsARMode) {
+                    // Update and draw the model and its shadow.
+                    mVirtualObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
+                    mVirtualObjectShadow.updateModelMatrix(mAnchorMatrix, scaleFactor);
+                    mVirtualObject.draw(viewmtx, projmtx, lightIntensity);
+                    mVirtualObjectShadow.draw(viewmtx, projmtx, lightIntensity);
+                } else {
+                    if (mRemoteRenders.size() > i) {
+                        AgoraVideoRender render = mRemoteRenders.get(i);
+                        ++i;
+                        if (render == null) continue;
 
-                if (mRemoteRenders.size() > i) {
-                    AgoraVideoRender render = mRemoteRenders.get(i);
-                    ++i;
-                    if (render == null) continue;
+                        Peer peer = render.getPeer();
+                        if (peer.data == null || peer.data.capacity() == 0) continue;
 
-                    Peer peer = render.getPeer();
-                    if (peer.data == null || peer.data.capacity() == 0) continue;
-
-                    mPeerObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
-                    mPeerObject.draw(viewmtx, projmtx, peer);
+                        mPeerObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
+                        mPeerObject.draw(viewmtx, projmtx, peer);
+                    }
                 }
             }
 
@@ -462,6 +473,34 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
     }
 
     private void initRtcEngine() {
+        mIsARMode = true;
+        mHidePoint = true;
+        mHidePlane = true;
+
+        Button modeButton = findViewById(R.id.switch_mode);
+        modeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                switchMode((Button)view);
+            }
+        });
+
+        Button hidePointButton = findViewById(R.id.show_point_cloud);
+        hidePointButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showPointCloud((Button)v);
+            }
+        });
+
+        Button hidePlaneButton = findViewById(R.id.show_plane);
+        hidePlaneButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showPlane((Button)v);
+            }
+        });
+
         try {
             mRtcEventHandler = new IRtcEngineEventHandler() {
                 @Override
@@ -664,5 +703,32 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
         }
 
         return true;
+    }
+
+    private void switchMode(Button button) {
+        button.setText((mIsARMode = !mIsARMode) ? getString(R.string.ar_mode) :
+                getString(R.string.agora_mode));
+    }
+
+    private void showPointCloud(Button button) {
+        button.setText((mHidePoint = !mHidePoint) ? getString(R.string.show_point) :
+                getString(R.string.hide_point));
+    }
+
+    private void showPlane(Button button) {
+        button.setText((mHidePlane = !mHidePlane) ? getString(R.string.show_plane) :
+                getString(R.string.hide_plane));
+    }
+
+    private boolean isARMode() {
+        return mIsARMode;
+    }
+
+    private boolean isShowPointCloud() {
+        return !mHidePoint;
+    }
+
+    private boolean isShowPlane() {
+        return !mHidePlane;
     }
 }

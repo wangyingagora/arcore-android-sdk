@@ -15,6 +15,12 @@
    limitations under the License.
 -->
 <resources>
-    <string name="app_name">HelloAR Java</string>
-    <!--<string name="private_broadcasting_app_id"></string> -->
+    <string name="app_name">ARCore</string>
+    
+    <string name="ar_mode">AR mode</string>
+    <string name="agora_mode">Agora mode</string>
+    <string name="show_point">Show point cloud</string>
+    <string name="hide_point">Hide point cloud</string>
+    <string name="show_plane">Show plane</string>
+    <string name="hide_plane">Hide plane</string>
 </resources>
