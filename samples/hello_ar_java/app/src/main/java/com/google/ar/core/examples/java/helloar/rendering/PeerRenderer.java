@@ -183,7 +183,6 @@ public class PeerRenderer {
         GLES20.glVertexAttribPointer(
             mTexCoordAttribute, 2, GLES20.GL_FLOAT, false, 0, FULL_RECTANGLE_TEX_BUF);
 
-
         // Enable vertex arrays
         GLES20.glEnableVertexAttribArray(mPositionAttribute);
         GLES20.glEnableVertexAttribArray(mTexCoordAttribute);
