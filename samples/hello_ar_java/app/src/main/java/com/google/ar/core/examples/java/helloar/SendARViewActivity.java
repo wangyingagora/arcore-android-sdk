@@ -662,10 +662,12 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
         mSenderHandler.sendMessage(message);
     }
 
-    private void sendARView(Bitmap source) {
-        if (source == null) return;
+    private void sendARView(Bitmap bitmap) {
+        if (bitmap == null) return;
 
-        Bitmap bitmap = source.copy(Bitmap.Config.ARGB_8888,true);
+        if (mSource.getConsumer() == null) return;
+
+        //Bitmap bitmap = source.copy(Bitmap.Config.ARGB_8888,true);
         int width = bitmap.getWidth();
         int height = bitmap.getHeight();
 
