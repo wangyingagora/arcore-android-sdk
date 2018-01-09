@@ -112,6 +112,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
     private boolean mIsARMode;
     private boolean mHidePoint;
     private boolean mHidePlane;
+    private float mScaleFactor = 1.0f;
 
     private IRtcEngineEventHandler mRtcEventHandler;
 
@@ -446,7 +447,7 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
 
                 if (mIsARMode) {
                     // Update and draw the model and its shadow.
-                    mVirtualObject.updateModelMatrix(mAnchorMatrix, scaleFactor);
+                    mVirtualObject.updateModelMatrix(mAnchorMatrix, mScaleFactor);
                     mVirtualObjectShadow.updateModelMatrix(mAnchorMatrix, scaleFactor);
                     mVirtualObject.draw(viewmtx, projmtx, lightIntensity);
                     mVirtualObjectShadow.draw(viewmtx, projmtx, lightIntensity);
@@ -498,6 +499,28 @@ public class SendARViewActivity extends AppCompatActivity implements GLSurfaceVi
             @Override
             public void onClick(View v) {
                 showPlane((Button)v);
+            }
+        });
+
+        Button zoomInButton = findViewById(R.id.zoom_in);
+        zoomInButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mScaleFactor > 5.0f) {
+                    return;
+                }
+                mScaleFactor += 0.2f;
+            }
+        });
+
+        Button zoomOutButton = findViewById(R.id.zoom_out);
+        zoomOutButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mScaleFactor < 0.1f) {
+                    return;
+                }
+                mScaleFactor -= 0.2f;
             }
         });
 
