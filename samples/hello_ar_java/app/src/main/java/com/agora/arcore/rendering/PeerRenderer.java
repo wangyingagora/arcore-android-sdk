@@ -13,7 +13,7 @@ import java.nio.FloatBuffer;
 import io.agora.rtc.gl.GlUtil;
 
 /**
- * Renders an object loaded from an OBJ file in OpenGL.
+ * Created by wyylling@gmail.com on 03/01/2018.
  */
 public class PeerRenderer {
     private static final String TAG = PeerRenderer.class.getSimpleName();

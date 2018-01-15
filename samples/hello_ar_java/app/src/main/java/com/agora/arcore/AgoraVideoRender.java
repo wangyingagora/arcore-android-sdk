@@ -2,14 +2,14 @@ package com.agora.arcore;
 
 import java.nio.ByteBuffer;
 
-import io.agora.rtc.mediaio.IVideoRenderer;
+import io.agora.rtc.mediaio.IVideoSink;
 import io.agora.rtc.mediaio.MediaIO;
 
 /**
- * Created by eaglewangy on 03/01/2018.
+ * Created by wyylling@gmail.com on 03/01/2018.
  */
 
-public class AgoraVideoRender implements IVideoRenderer {
+public class AgoraVideoRender implements IVideoSink {
     private Peer mPeer;
     private boolean mIsLocal;
 
@@ -50,8 +50,7 @@ public class AgoraVideoRender implements IVideoRenderer {
 
     @Override
     public int getPixelFormat() {
-        // return MediaIO.PixelFormat.RGBA.intValue();
-        return 6;
+        return MediaIO.PixelFormat.RGBA.intValue();
     }
 
     @Override

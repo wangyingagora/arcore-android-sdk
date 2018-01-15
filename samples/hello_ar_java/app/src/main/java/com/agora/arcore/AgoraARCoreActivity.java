@@ -55,12 +55,12 @@ import javax.microedition.khronos.opengles.GL10;
 import io.agora.rtc.Constants;
 import io.agora.rtc.IRtcEngineEventHandler;
 import io.agora.rtc.RtcEngine;
+import io.agora.rtc.mediaio.MediaIO;
 
 /**
- * This is a simple example that shows how to create an augmented reality (AR) application using the
- * ARCore API. The application will display any detected planes and will allow the user to tap on a
- * plane to place a 3d model of the Android robot.
+ * Created by wyylling@gmail.com on 03/01/2018.
  */
+
 public class AgoraARCoreActivity extends AppCompatActivity implements GLSurfaceView.Renderer {
     private static final String TAG = AgoraARCoreActivity.class.getSimpleName();
 
@@ -682,7 +682,7 @@ public class AgoraARCoreActivity extends AppCompatActivity implements GLSurfaceV
         bitmap.copyPixelsToBuffer(byteBuffer);
         byte[] data = byteBuffer.array();
 
-        mSource.getConsumer().consumeByteArrayFrame(data, 6, width, height, 270, System.currentTimeMillis());
+        mSource.getConsumer().consumeByteArrayFrame(data, MediaIO.PixelFormat.RGBA.intValue(), width, height, 270, System.currentTimeMillis());
     }
 
     private void addRemoteRender(int uid) {

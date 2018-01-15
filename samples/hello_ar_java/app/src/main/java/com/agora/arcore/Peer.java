@@ -3,7 +3,7 @@ package com.agora.arcore;
 import java.nio.ByteBuffer;
 
 /**
- * Created by eaglewangy on 04/01/2018.
+ * Created by wyylling@gmail.com on 03/01/2018.
  */
 
 public class Peer {
